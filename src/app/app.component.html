@@ -1,0 +1,234 @@
+<div class="shell">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-mark">❄</div>
+      <div>
+        <h1 class="header-title">Surveillance Chambre Froide</h1>
+        <p class="header-sub">Système de monitoring en temps réel</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="alarm-badge" [class.alarm-on]="alarmActive">
+        <span class="alarm-dot"></span>
+        {{ alarmActive ? 'ALARME ACTIVE' : 'Système Normal' }}
+      </div>
+      <div class="update-time" *ngIf="lastUpdate">
+        Mis à jour {{ lastUpdate | date:'HH:mm:ss' }}
+      </div>
+    </div>
+  </header>
+
+  <!-- LOADING -->
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Connexion au serveur…</p>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-box" *ngIf="error && !loading">
+    <span>⚠</span> Impossible de récupérer les données. Vérifiez la connexion.
+  </div>
+
+  <div class="content" *ngIf="!loading">
+
+    <!-- RISK BANNER -->
+    <div class="risk-banner" [style.border-color]="riskColor" [style.color]="riskColor">
+      <div class="risk-label">Risque Global</div>
+      <div class="risk-value">{{ riskLabel }}</div>
+      <div class="risk-prob" *ngIf="data.failure_probability !== undefined">
+        Probabilité de panne : <strong>{{ fmtPct(data.failure_probability) }}</strong>
+      </div>
+    </div>
+
+    <!-- LIVE CARDS ROW -->
+    <section class="section-title">Mesures en Direct</section>
+    <div class="cards-grid">
+
+      <!-- BC10 Temperature -->
+      <div class="card card-temp">
+        <div class="card-tag">BC10</div>
+        <div class="card-name">Température</div>
+        <div class="card-main">{{ fmt(data.bc10_temp) }}<span class="unit">°C</span></div>
+        <div class="card-pred-row">
+          <span class="pred-label">Prédite</span>
+          <span class="pred-val">{{ fmt(data.temp1_predite) }}°C</span>
+        </div>
+        <div class="card-meta">
+          <span class="anomalie" [class.active]="data.bc10_temp_anomalie">
+            {{ data.bc10_temp_anomalie ? '⚠ Anomalie' : '✓ Normal' }}
+          </span>
+          <span class="risk-chip" [style.color]="riskColorFor(data.bc10_temp_risk)">
+            {{ riskLabelFor(data.bc10_temp_risk) }}
+          </span>
+        </div>
+        <div class="failure-bar">
+          <div class="failure-bar-fill"
+            [style.width]="(data.bc10_temp_failure_prob || 0) * 100 + '%'"
+            [style.background]="riskColorFor(data.bc10_temp_risk)">
+          </div>
+        </div>
+        <div class="failure-pct">Prob. panne : {{ fmtPct(data.bc10_temp_failure_prob) }}</div>
+      </div>
+
+      <!-- BC10 Humidité -->
+      <div class="card card-hum">
+        <div class="card-tag">BC10</div>
+        <div class="card-name">Humidité</div>
+        <div class="card-main">{{ fmt(data.bc10_hum) }}<span class="unit">%</span></div>
+        <div class="card-pred-row">
+          <span class="pred-label">Prédite</span>
+          <span class="pred-val">{{ fmt(data.hum_predite) }}%</span>
+        </div>
+        <div class="card-meta">
+          <span class="anomalie" [class.active]="data.hum_anomalie">
+            {{ data.hum_anomalie ? '⚠ Anomalie' : '✓ Normal' }}
+          </span>
+          <span class="risk-chip" [style.color]="riskColorFor(data.hum_risk)">
+            {{ riskLabelFor(data.hum_risk) }}
+          </span>
+        </div>
+        <div class="failure-bar">
+          <div class="failure-bar-fill"
+            [style.width]="(data.hum_failure_prob || 0) * 100 + '%'"
+            [style.background]="riskColorFor(data.hum_risk)">
+          </div>
+        </div>
+        <div class="failure-pct">Prob. panne : {{ fmtPct(data.hum_failure_prob) }}</div>
+      </div>
+
+      <!-- DS18B20 Temperature -->
+      <div class="card card-ds">
+        <div class="card-tag">DS18B20</div>
+        <div class="card-name">Température</div>
+        <div class="card-main">{{ fmt(data.ds18b20_temp) }}<span class="unit">°C</span></div>
+        <div class="card-pred-row">
+          <span class="pred-label">Prédite</span>
+          <span class="pred-val">{{ fmt(data.temp2_predite) }}°C</span>
+        </div>
+        <div class="card-meta">
+          <span class="anomalie" [class.active]="data.ds18b20_anomalie">
+            {{ data.ds18b20_anomalie ? '⚠ Anomalie' : '✓ Normal' }}
+          </span>
+          <span class="risk-chip" [style.color]="riskColorFor(data.ds18b20_risk)">
+            {{ riskLabelFor(data.ds18b20_risk) }}
+          </span>
+        </div>
+        <div class="failure-bar">
+          <div class="failure-bar-fill"
+            [style.width]="(data.ds18b20_failure_prob || 0) * 100 + '%'"
+            [style.background]="riskColorFor(data.ds18b20_risk)">
+          </div>
+        </div>
+        <div class="failure-pct">Prob. panne : {{ fmtPct(data.ds18b20_failure_prob) }}</div>
+      </div>
+
+      <!-- Batterie -->
+      <div class="card card-batt">
+        <div class="card-tag">BC10</div>
+        <div class="card-name">Batterie</div>
+        <div class="card-main">{{ fmt(data.bc10_batt, 0) }}<span class="unit">%</span></div>
+        <div class="batt-bar">
+          <div class="batt-fill" [style.width]="(data.bc10_batt || 0) + '%'"
+            [style.background]="(data.bc10_batt || 0) < 20 ? 'var(--red)' : (data.bc10_batt || 0) < 50 ? 'var(--amber)' : 'var(--green)'">
+          </div>
+        </div>
+        <div class="card-sub">{{ (data.bc10_batt || 0) < 20 ? '⚠ Batterie faible' : 'Niveau correct' }}</div>
+      </div>
+
+    </div>
+
+    <!-- PREDICTIONS FUTURES -->
+    <section class="section-title">Prédictions Futures</section>
+    <div class="future-grid">
+
+      <div class="future-col">
+        <div class="future-header">
+          <span class="future-horizon">+5 min</span>
+          <span class="future-time">{{ futureTime(5) }}</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">BC10 Temp</span>
+          <span class="future-val cold">{{ fmt(data.future_t5_temp1) }}°C</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">DS18B20 Temp</span>
+          <span class="future-val green">{{ fmt(data.future_t5_temp2) }}°C</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">BC10 Humidité</span>
+          <span class="future-val purple">{{ fmt(data.future_t5_hum) }}%</span>
+        </div>
+      </div>
+
+      <div class="future-col">
+        <div class="future-header">
+          <span class="future-horizon">+10 min</span>
+          <span class="future-time">{{ futureTime(10) }}</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">BC10 Temp</span>
+          <span class="future-val cold">{{ fmt(data.future_t10_temp1) }}°C</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">DS18B20 Temp</span>
+          <span class="future-val green">{{ fmt(data.future_t10_temp2) }}°C</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">BC10 Humidité</span>
+          <span class="future-val purple">{{ fmt(data.future_t10_hum) }}%</span>
+        </div>
+      </div>
+
+      <div class="future-col">
+        <div class="future-header">
+          <span class="future-horizon">+20 min</span>
+          <span class="future-time">{{ futureTime(20) }}</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">BC10 Temp</span>
+          <span class="future-val cold">{{ fmt(data.future_t20_temp1) }}°C</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">DS18B20 Temp</span>
+          <span class="future-val green">{{ fmt(data.future_t20_temp2) }}°C</span>
+        </div>
+        <div class="future-row">
+          <span class="future-sensor">BC10 Humidité</span>
+          <span class="future-val purple">{{ fmt(data.future_t20_hum) }}%</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHARTS -->
+    <section class="section-title">Évolution Prédite</section>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-legend">
+          <span class="leg-item"><span class="leg-dot" style="background:#4fc3f7"></span>BC10</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#00e676;clip-path:polygon(50% 0,100% 100%,0 100%)"></span>DS18B20</span>
+        </div>
+        <div class="chart-label">Température (°C) — Actuel → +20 min</div>
+        <div class="chart-wrap">
+          <canvas #tempChart role="img" aria-label="Courbe de température actuelle et prédite pour BC10 et DS18B20">Données de température BC10 et DS18B20 sur 20 minutes.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-legend">
+          <span class="leg-item"><span class="leg-dot" style="background:#b39ddb"></span>BC10 Humidité</span>
+        </div>
+        <div class="chart-label">Humidité (%) — Actuel → +20 min</div>
+        <div class="chart-wrap">
+          <canvas #humChart role="img" aria-label="Courbe d'humidité actuelle et prédite pour BC10">Données d'humidité BC10 sur 20 minutes.</canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="footer">
+    Actualisation automatique toutes les 30 secondes &nbsp;·&nbsp; finek.com.tn:9087
+  </footer>
+</div>
